@@ -24,13 +24,16 @@ impl<T> Iterator for TileChunkIterator<T> where T: Clone {
     type Item = Vec<T>;
     
     fn next(&mut self) -> Option<Vec<T>> {
-        let x2 = self.x + self.tw;
-        let y2 = self.y + self.th;
+        let mut x2 = self.x + self.tw;
+        let mut y2 = self.y + self.th;
         
         //If the next tile is off the right side of the image, go down a row
         if x2 > self.stride {
             self.x = 0;
             self.y = y2;
+            
+            x2 = self.x + self.tw;
+            y2 = self.y + self.th;
         }
         
         //If the next tile is off the bottom of the image, we're done
@@ -42,11 +45,11 @@ impl<T> Iterator for TileChunkIterator<T> where T: Clone {
         
         for j in self.y..y2 {
             for i in self.x..x2 {
-                v.push(self.src[(self.y + (j * self.stride) + self.x + i) as usize].clone());
+                v.push(self.src[(j * self.stride + i) as usize].clone());
             }
         }
         
-        self.x = x2;
+        self.x += self.tw;
         
         Some(v)
     }
