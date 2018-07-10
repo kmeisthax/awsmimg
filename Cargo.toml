@@ -1,0 +1,18 @@
+[package]
+name = "asmimg"
+version = "0.1.0"
+authors = ["David Wendt"]
+
+[dependencies]
+num = "*"
+image = "*"
+png = "*"
+argparse = "*"
+
+[lib]
+name = "asmimg"
+path = "src/lib.rs"
+
+[[bin]]
+name = "asmimg"
+path = "src/main.rs"
