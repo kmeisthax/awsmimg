@@ -47,7 +47,7 @@ pub trait IndexedGraphicsEncoder {
 
 /// Given an image and an encoder, encode the image by treating it's color
 /// values as color indexes.
-pub fn encode_grayscale_image<'a, W, I, P, S>(format: IndexedFormat, mut w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
+pub fn encode_grayscale_image<'a, W, I, P, S>(format: IndexedFormat, w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
     let mut enc = match format {
         IndexedFormat::AGB4 => AGB4Encoder::new(w)
     };
