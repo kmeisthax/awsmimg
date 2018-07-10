@@ -12,11 +12,12 @@ pub fn indexes_from_luma<I, P, S>(image: &I, maxcol: S) -> Vec<S>
     let (width, height) = image.dimensions();
     let mut out : Vec<S> = Vec::with_capacity(width as usize * height as usize);
     let imgmax = S::max_value();
-    let imgmax: i32 = NumCast::from(imgmax).unwrap();
+    let imgmax: f32 = NumCast::from(imgmax).unwrap();
+    let maxcol_adj: f32 = NumCast::from(maxcol - S::from(1).unwrap()).unwrap();
     
     for (_, _, pixel) in image.pixels() {
-        let gray = pixel.to_luma();
-        out.push(gray[0] / S::from(imgmax).unwrap() * (maxcol - S::from(1).unwrap()));
+        let gray = pixel.to_luma()[0].to_f32().unwrap();
+        out.push(S::from(gray / imgmax * maxcol_adj).unwrap());
     }
     
     out
