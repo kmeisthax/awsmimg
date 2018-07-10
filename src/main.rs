@@ -5,9 +5,12 @@ extern crate num;
 mod asmimg;
 
 use argparse::{ArgumentParser, Store};
+use std::fs::File;
+use std::io;
 use asmimg::encoder::encode_grayscale_image;
+use asmimg::formats::IndexedFormat;
 
-fn main() {
+fn main() -> io::Result<()> {
     let mut input_filename = "".to_string();
     let mut output_filename = "".to_string();
     let mut format = "".to_string();
@@ -24,9 +27,12 @@ fn main() {
         ap.parse_args_or_exit();
     }
     
-    println!("Converting {} to {}", input_filename, format);
+    println!("Converting {} to {}", input_filename, output_filename);
     
     let img = image::open(input_filename).unwrap();
+    let mut bin = File::create(output_filename)?;
     
-    println!()
+    {
+        encode_grayscale_image(IndexedFormat::AGB4, &mut bin, &img)
+    }
 }

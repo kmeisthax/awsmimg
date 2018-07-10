@@ -16,8 +16,7 @@ pub fn indexes_from_luma<I, P, S>(image: &I, maxcol: S) -> Vec<S>
     
     for (_, _, pixel) in image.pixels() {
         let gray = pixel.to_luma();
-        
-        out.push(gray[0] / S::from(imgmax).unwrap() * maxcol);
+        out.push(gray[0] / S::from(imgmax).unwrap() * (maxcol - S::from(1).unwrap()));
     }
     
     out
