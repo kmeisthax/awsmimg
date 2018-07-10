@@ -5,7 +5,7 @@ extern crate num;
 mod asmimg;
 
 use argparse::{ArgumentParser, Store};
-use asmimg::formats::encode_grayscale_image;
+use asmimg::encoder::encode_grayscale_image;
 
 fn main() {
     let mut input_filename = "".to_string();

@@ -1,5 +1,10 @@
 use std::io;
+use std::io::Write;
 use image::{GenericImage, Primitive, Rgb, Pixel};
+
+use asmimg::formats::IndexedFormat;
+use asmimg::formats::agb::AGB4Encoder;
+use asmimg::conversion::indexes_from_luma;
 
 pub trait IndexedGraphicsEncoder {
     /// Given a vector of palette indexes, encode them for the particular
@@ -38,6 +43,18 @@ pub trait IndexedGraphicsEncoder {
     /// of screen space known as the attribute size. It does not imply a limit
     /// on the size of palette Vec<u8>s passed to encode_palette.
     fn palette_maxcol(&self) -> u16;
+}
+
+/// Given an image and an encoder, encode the image by treating it's color
+/// values as color indexes.
+pub fn encode_grayscale_image<'a, W, I, P, S>(format: IndexedFormat, mut w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
+    let mut enc = match format {
+        IndexedFormat::AGB4 => AGB4Encoder::new(w)
+    };
+    
+    let (width, height) = image.dimensions();
+    let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
+    enc.encode_indexes(gdata, width, height)
 }
 
 pub trait BitmappedGraphicsEncoder {
