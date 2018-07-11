@@ -54,7 +54,7 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB4Encoder<'a, W> {
     }
     
     fn palette_maxcol(&self) -> u16 {
-        16
+        15
     }
 }
 
@@ -91,7 +91,7 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
     }
     
     fn palette_maxcol(&self) -> u16 {
-        256
+        255
     }
 }
 

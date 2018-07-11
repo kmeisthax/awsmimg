@@ -39,9 +39,8 @@ pub trait IndexedGraphicsEncoder {
     
     /// Retrieves the maximum number of colors in a palette.
     /// 
-    /// This is the limit on how many colors can be represented within a region
-    /// of screen space known as the attribute size. It does not imply a limit
-    /// on the size of palette Vec<u8>s passed to encode_palette.
+    /// This is the largest index that the format can represent. It does not
+    /// imply a limit on the size of palette Vec<u8>s passed to encode_palette.
     fn palette_maxcol(&self) -> u16;
 }
 

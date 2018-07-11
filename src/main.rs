@@ -8,7 +8,7 @@ use argparse::{ArgumentParser, Store};
 use std::fs::File;
 use std::io;
 use asmimg::encoder::encode_grayscale_image;
-use asmimg::formats::IndexedFormat;
+use asmimg::formats::interpret_indexed_format_name;
 
 fn main() -> io::Result<()> {
     let mut input_filename = "".to_string();
@@ -31,8 +31,9 @@ fn main() -> io::Result<()> {
     
     let img = image::open(input_filename).unwrap();
     let mut bin = File::create(output_filename)?;
+    let fmt = interpret_indexed_format_name(&format).unwrap();
     
     {
-        encode_grayscale_image(IndexedFormat::AGB4, &mut bin, &img)
+        encode_grayscale_image(fmt, &mut bin, &img)
     }
 }
