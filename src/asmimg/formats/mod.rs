@@ -2,5 +2,6 @@
 pub mod agb;
 
 pub enum IndexedFormat {
-    AGB4
+    AGB4,
+    AGB8
 }

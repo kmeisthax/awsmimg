@@ -3,7 +3,7 @@ use std::io::Write;
 use image::{GenericImage, Primitive, Rgb, Pixel};
 
 use asmimg::formats::IndexedFormat;
-use asmimg::formats::agb::AGB4Encoder;
+use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder};
 use asmimg::conversion::indexes_from_luma;
 
 pub trait IndexedGraphicsEncoder {
@@ -48,13 +48,20 @@ pub trait IndexedGraphicsEncoder {
 /// Given an image and an encoder, encode the image by treating it's color
 /// values as color indexes.
 pub fn encode_grayscale_image<'a, W, I, P, S>(format: IndexedFormat, w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
-    let mut enc = match format {
-        IndexedFormat::AGB4 => AGB4Encoder::new(w)
-    };
-    
     let (width, height) = image.dimensions();
-    let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
-    enc.encode_indexes(gdata, width, height)
+    
+    match format {
+        IndexedFormat::AGB4 => {
+            let mut enc = AGB4Encoder::new(w);
+            let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
+            enc.encode_indexes(gdata, width, height)
+        },
+        IndexedFormat::AGB8 => {
+            let mut enc = AGB8Encoder::new(w);
+            let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
+            enc.encode_indexes(gdata, width, height)
+        }
+    }
 }
 
 pub trait BitmappedGraphicsEncoder {
