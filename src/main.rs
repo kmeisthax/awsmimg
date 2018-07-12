@@ -8,7 +8,7 @@ use argparse::{ArgumentParser, Store, StoreFalse, StoreTrue};
 use std::fs::{OpenOptions};
 use std::io;
 use std::io::Seek;
-use asmimg::encoder::encode_grayscale_image;
+use asmimg::encoder::encode_image_as_indexes_with_format;
 use asmimg::formats::interpret_indexed_format_name;
 
 fn main() -> io::Result<()> {
@@ -48,6 +48,6 @@ fn main() -> io::Result<()> {
     bin.seek(io::SeekFrom::Start(offset))?;
     
     {
-        encode_grayscale_image(fmt, &mut bin, &img)
+        encode_image_as_indexes_with_format(fmt, &mut bin, &img)
     }
 }

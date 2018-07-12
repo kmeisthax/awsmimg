@@ -44,22 +44,30 @@ pub trait IndexedGraphicsEncoder {
     fn palette_maxcol(&self) -> u16;
 }
 
-/// Given an image and an encoder, encode the image by treating it's color
-/// values as color indexes.
-pub fn encode_grayscale_image<'a, W, I, P, S>(format: IndexedFormat, w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
+/// Given an image and an encoder, encode index data by interpreting the
+/// grayscale values of an image as indicies.
+/// 
+/// The grayscale-image-as-index-data approach is useful because it assigns an
+/// unambiguous color to every index, allowing editing of the graphical data
+/// using image manipulation tools that don't provide palette editing.
+pub fn encode_image_as_indexes<'a, E, I, P, S>(enc: &mut E, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, E: IndexedGraphicsEncoder + 'a {
     let (width, height) = image.dimensions();
     
+    let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
+    enc.encode_indexes(gdata, width, height)
+}
+
+/// Given an image, a writer, and a format description, encode index data by
+/// interpreting the grayscale values of an image as indicies.
+/// 
+/// This function allows access to built-in, private type implementations of
+/// these traits. It is currently not possible to access these types through any
+/// other means as they are private and IndexedGraphicsEncoder cannot be
+/// dynamically dispatched.
+pub fn encode_image_as_indexes_with_format<'a, W, I, P, S>(format: IndexedFormat, w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
     match format {
-        IndexedFormat::AGB4 => {
-            let mut enc = AGB4Encoder::new(w);
-            let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
-            enc.encode_indexes(gdata, width, height)
-        },
-        IndexedFormat::AGB8 => {
-            let mut enc = AGB8Encoder::new(w);
-            let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
-            enc.encode_indexes(gdata, width, height)
-        }
+        IndexedFormat::AGB4 => encode_image_as_indexes(&mut AGB4Encoder::new(w), image),
+        IndexedFormat::AGB8 => encode_image_as_indexes(&mut AGB8Encoder::new(w), image)
     }
 }
 
