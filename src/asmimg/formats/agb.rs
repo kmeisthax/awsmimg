@@ -61,12 +61,21 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB4Encoder<'a, W> {
 /// Encoder for 8bpp tile patterns for the AGB platform.
 pub struct AGB8Encoder<'a, W: Write + 'a> {
     w: &'a mut W,
+    tsize: u32
 }
 
 impl<'a, W:Write + 'a> AGB8Encoder<'a, W> {
-    pub fn new(write: &'a mut W) -> AGB8Encoder<'a, W> {
+    pub fn new_tiled(write: &'a mut W) -> AGB8Encoder<'a, W> {
         AGB8Encoder {
-            w: write
+            w: write,
+            tsize: 8
+        }
+    }
+    
+    pub fn new_chunky(write: &'a mut W) -> AGB8Encoder<'a, W> { 
+        AGB8Encoder {
+            w: write,
+            tsize: 1
         }
     }
 }
@@ -74,13 +83,14 @@ impl<'a, W:Write + 'a> AGB8Encoder<'a, W> {
 impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
         let mut out: [u8; 64] = [0; 64];
+        let tsize = (self.tsize * self.tsize) as usize;
         
-        for tile in TileChunkIterator::new(data, 8, 8, width) {
+        for tile in TileChunkIterator::new(data, self.tsize, self.tsize, width) {
             for (i, byte) in tile.into_iter().enumerate() {
                 out[i] = byte.to_u8().unwrap() & 0xFF;
             }
             
-            self.w.write(&out)?;
+            self.w.write(&out[0 .. tsize])?;
         }
         
         Ok(())
@@ -123,12 +133,28 @@ mod tests {
     }
     
     #[test]
-    fn data8_encode() {
+    fn data8t_encode() {
         let src = num::range(0, 64).collect();
         let mut test_out = Cursor::new(Vec::with_capacity(64));
         
         {
-            let mut agb4 = AGB8Encoder::new(&mut test_out);
+            let mut agb4 = AGB8Encoder::new_tiled(&mut test_out);
+
+            agb4.encode_indexes(src, 8, 8).unwrap();
+        }
+        
+        let valid_out : Vec<u8> = num::range(0, 64).collect();
+        
+        assert_eq!(test_out.get_ref(), &valid_out)
+    }
+    
+    #[test]
+    fn data8c_encode() {
+        let src = num::range(0, 64).collect();
+        let mut test_out = Cursor::new(Vec::with_capacity(64));
+        
+        {
+            let mut agb4 = AGB8Encoder::new_chunky(&mut test_out);
 
             agb4.encode_indexes(src, 8, 8).unwrap();
         }

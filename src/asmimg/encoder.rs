@@ -67,7 +67,8 @@ pub fn encode_image_as_indexes<'a, E, I, P, S>(enc: &mut E, image: &I) -> io::Re
 pub fn encode_image_as_indexes_with_format<'a, W, I, P, S>(format: IndexedFormat, w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
     match format {
         IndexedFormat::AGB4 => encode_image_as_indexes(&mut AGB4Encoder::new(w), image),
-        IndexedFormat::AGB8 => encode_image_as_indexes(&mut AGB8Encoder::new(w), image)
+        IndexedFormat::AGB8Tiled => encode_image_as_indexes(&mut AGB8Encoder::new_tiled(w), image),
+        IndexedFormat::AGB8Chunky => encode_image_as_indexes(&mut AGB8Encoder::new_chunky(w), image)
     }
 }
 
