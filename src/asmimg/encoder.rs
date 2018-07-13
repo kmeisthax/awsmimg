@@ -99,5 +99,5 @@ pub trait DirectGraphicsEncoder {
     /// Graphics formats with lower bit depths must convert higher bit-depth
     /// images by rounding to the nearest neighbor and not by any other method.
     /// In particular, dithering is not permitted.
-    fn encode_colors<I, P, S>(&mut self, image: I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static;
+    fn encode_colors<I, P, S>(&mut self, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static;
 }
