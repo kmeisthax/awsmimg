@@ -17,3 +17,8 @@ pub fn interpret_indexed_format_name(fmt_given: &str) -> Option<IndexedFormat> {
         _ => None
     }
 }
+
+pub enum DirectFormat {
+    AGB16, //16 bits per pixel, packed, RGB5N1, arragned row-major
+    NTR16  //16 bits per pixel, packed, RGB5A1, arragned row-major
+}

@@ -1,12 +1,12 @@
-use asmimg::encoder::IndexedGraphicsEncoder;
+use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
 use asmimg::tiles::TileChunkIterator;
 
 use std::io;
 use std::io::Write;
-use image::{Primitive, Rgba};
+use image::{GenericImage, Primitive, Rgba, Pixel};
 
 /// Encode a series of RGBA colors as palette data.
-fn encode_palette<'a, T: Primitive, W: Write + 'a>(w: &'a mut W, palette: Vec<Rgba<T>>, use_alpha: bool) -> io::Result<()> {
+fn encode_palette<'a, I: Iterator, T: Primitive, W: Write + 'a>(w: &'a mut W, palette: I, use_alpha: bool) -> io::Result<()> where I: Iterator<Item=Rgba<T>> {
     let imgmax = T::max_value();
     let mut out: [u8; 2] = [0, 0];
 
@@ -27,6 +27,29 @@ fn encode_palette<'a, T: Primitive, W: Write + 'a>(w: &'a mut W, palette: Vec<Rg
     }
 
     Ok(())
+}
+
+struct ImageRgbaIterator<'a, I, P, S> where I: Iterator<Item=(u32, u32, P)> + 'a, P: Pixel<Subpixel=S> + 'a, S: Primitive + 'a {
+    i: &'a mut I
+}
+
+impl<'a, I, P, S> ImageRgbaIterator<'a, I, P, S> where I: Iterator<Item=(u32, u32, P)> + 'a, P: Pixel<Subpixel=S> + 'a, S: Primitive + 'a {
+    pub fn new(i: &'a mut I) -> ImageRgbaIterator<'a, I, P, S> {
+        ImageRgbaIterator {
+            i: i
+        }
+    }
+}
+
+impl<'a, I, P, S> Iterator for ImageRgbaIterator<'a, I, P, S> where I: Iterator<Item=(u32, u32, P)> + 'a, P: Pixel<Subpixel=S> + 'a, S: Primitive + 'a {
+    type Item = Rgba<S>;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.i.next() {
+            None => None,
+            Some((_, _, p)) => Some(p.to_rgba())
+        }
+    }
 }
 
 /// Encoder for 4bpp tile patterns for the AGB platform.
@@ -57,7 +80,7 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB4Encoder<'a, W> {
     }
     
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
-        encode_palette(self.w, palette, false)
+        encode_palette(self.w, palette.into_iter(), false)
     }
     
     fn palette_maxcol(&self) -> u16 {
@@ -104,11 +127,38 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
     }
     
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
-        encode_palette(self.w, palette, false)
+        encode_palette(self.w, palette.into_iter(), false)
     }
     
     fn palette_maxcol(&self) -> u16 {
         255
+    }
+}
+
+pub struct AGB16Encoder<'a, W: Write + 'a> {
+    w: &'a mut W,
+    allow_ntr_alpha: bool
+}
+
+impl<'a, W: Write + 'a> AGB16Encoder<'a, W> {
+    pub fn new_agb(write: &'a mut W) -> AGB16Encoder<'a, W> {
+        AGB16Encoder {
+            w: write,
+            allow_ntr_alpha: false
+        }
+    }
+    
+    pub fn new_ntr(write: &'a mut W) -> AGB16Encoder<'a, W> {
+        AGB16Encoder {
+            w: write,
+            allow_ntr_alpha: true
+        }
+    }
+}
+
+impl<'a, W: Write> DirectGraphicsEncoder for AGB16Encoder<'a, W> {
+    fn encode_colors<I, P, S>(&mut self, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static {
+        encode_palette(self.w, ImageRgbaIterator::new(&mut image.pixels()), self.allow_ntr_alpha)
     }
 }
 
