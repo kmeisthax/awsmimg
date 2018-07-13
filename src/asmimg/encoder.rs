@@ -1,11 +1,17 @@
 use std::io;
 use std::io::Write;
-use image::{GenericImage, Primitive, Rgb, Pixel};
+use image::{GenericImage, Primitive, Rgba, Pixel};
 
 use asmimg::formats::IndexedFormat;
 use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder};
 use asmimg::conversion::indexes_from_luma;
 
+/// Represents a struct which can encode color indexes and their palettes into
+/// a particular indexed image format.
+/// 
+/// The format supported by the impl may be tiled, chunky, planar, interleaved,
+/// or even compressed; as long as the format ultimately represents some kind
+/// of color index into a hardware palette.
 pub trait IndexedGraphicsEncoder {
     /// Given a vector of palette indexes, encode them for the particular
     /// graphics format this encoder supports.
@@ -35,7 +41,7 @@ pub trait IndexedGraphicsEncoder {
     /// encoder is told to encode a palette consisting of 22 colors, it must
     /// write 22 colors to the palette. Conversely, a palette underflow must
     /// not be padded to the length of a single palette.
-    fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgb<T>>) -> io::Result<()>;
+    fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()>;
     
     /// Retrieves the maximum number of colors in a palette.
     /// 
@@ -72,7 +78,13 @@ pub fn encode_image_as_indexes_with_format<'a, W, I, P, S>(format: IndexedFormat
     }
 }
 
-pub trait BitmappedGraphicsEncoder {
+/// Represents a struct which can encode color images into a particular direct
+/// color image format.
+/// 
+/// The format supported by the impl may be tiled, chunky, planar, interleaved,
+/// or even compressed; as long as the format ultimately represents some kind
+/// of color index into a hardware palette.
+pub trait DirectGraphicsEncoder {
     /// Given a vector of color data, encode this data for the particular
     /// graphics format this encoder supports.
     /// 

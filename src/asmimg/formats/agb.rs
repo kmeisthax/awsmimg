@@ -3,17 +3,24 @@ use asmimg::tiles::TileChunkIterator;
 
 use std::io;
 use std::io::Write;
-use image::{Primitive, Rgb};
+use image::{Primitive, Rgba};
 
-fn encode_palette_int<'a, T: Primitive, W: Write + 'a>(w: &'a mut W, palette: Vec<Rgb<T>>) -> io::Result<()> {
+/// Encode a series of RGBA colors as palette data.
+fn encode_palette<'a, T: Primitive, W: Write + 'a>(w: &'a mut W, palette: Vec<Rgba<T>>, use_alpha: bool) -> io::Result<()> {
     let imgmax = T::max_value();
     let mut out: [u8; 2] = [0, 0];
 
-    for rgb in palette {
-        let r : u16 = (rgb[0].to_f32().unwrap() / imgmax.to_f32().unwrap() * 255f32) as u16;
-        let g : u16 = (rgb[1].to_f32().unwrap() / imgmax.to_f32().unwrap() * 255f32) as u16;
-        let b : u16 = (rgb[2].to_f32().unwrap() / imgmax.to_f32().unwrap() * 255f32) as u16;
-        let enc_color: u16 = b & 0xF8 << 7 | g & 0xF8 << 2 | r >> 3;
+    for rgba in palette {
+        let r : u16 = (rgba[0].to_f32().unwrap() / imgmax.to_f32().unwrap() * 255f32) as u16;
+        let g : u16 = (rgba[1].to_f32().unwrap() / imgmax.to_f32().unwrap() * 255f32) as u16;
+        let b : u16 = (rgba[2].to_f32().unwrap() / imgmax.to_f32().unwrap() * 255f32) as u16;
+        let a : u16 = match use_alpha {
+            true => (rgba[3].to_f32().unwrap() / imgmax.to_f32().unwrap()) as u16,
+            false => 0
+        };
+        
+        let enc_color: u16 = a & 0x80 << 8 | b & 0xF8 << 7 | g & 0xF8 << 2 | r >> 3;
+        
         out[0] = ((enc_color >> 0) & 0xFF) as u8;
         out[1] = ((enc_color >> 8) & 0xFF) as u8;
         w.write(&out)?;
@@ -49,8 +56,8 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB4Encoder<'a, W> {
         Ok(())
     }
     
-    fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgb<T>>) -> io::Result<()> {
-        encode_palette_int(self.w, palette)
+    fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
+        encode_palette(self.w, palette, false)
     }
     
     fn palette_maxcol(&self) -> u16 {
@@ -96,8 +103,8 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
         Ok(())
     }
     
-    fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgb<T>>) -> io::Result<()> {
-        encode_palette_int(self.w, palette)
+    fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
+        encode_palette(self.w, palette, false)
     }
     
     fn palette_maxcol(&self) -> u16 {
