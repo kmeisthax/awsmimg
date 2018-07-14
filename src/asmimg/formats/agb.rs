@@ -19,7 +19,7 @@ fn encode_palette<'a, I: Iterator, T: Primitive, W: Write + 'a>(w: &'a mut W, pa
             false => 0
         };
         
-        let enc_color: u16 = a & 0x80 << 8 | b & 0xF8 << 7 | g & 0xF8 << 2 | r >> 3;
+        let enc_color: u16 = (a & 0x80) << 8 | (b & 0xF8) << 7 | (g & 0xF8) << 2 | r >> 3;
         
         out[0] = ((enc_color >> 0) & 0xFF) as u8;
         out[1] = ((enc_color >> 8) & 0xFF) as u8;
@@ -165,10 +165,11 @@ impl<'a, W: Write> DirectGraphicsEncoder for AGB16Encoder<'a, W> {
 #[cfg(test)]
 mod tests {
     extern crate num;
+    extern crate image;
     
     use std::io::Cursor;
-    use asmimg::encoder::IndexedGraphicsEncoder;
-    use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder};
+    use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
+    use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
     
     #[test]
     fn data4_encode() {
@@ -217,6 +218,34 @@ mod tests {
         }
         
         let valid_out : Vec<u8> = num::range(0, 64).collect();
+        
+        assert_eq!(test_out.get_ref(), &valid_out)
+    }
+    
+    #[test]
+    fn data16_encode() {
+        let img = image::ImageBuffer::from_fn(8, 8, |x, y| {
+            image::Rgba([(x * 8) as u8, (y as i16 * -8 + 255) as u8, (x * y) as u8, ((x + y) & 0x01 * 255) as u8])
+        });
+        let mut test_out = Cursor::new(Vec::with_capacity(64));
+        
+        {
+            let mut agb16 = AGB16Encoder::new_agb(&mut test_out);
+            
+            agb16.encode_colors(&img);
+        }
+        
+        //TODO: Actually round-trip this against an AGB16 decoder (not yet written)
+        //This vector was obtained by grabbing some valid-looking output from
+        //the code under test and spot-checking a few values against the above
+        let valid_out : Vec<u8> = vec![224, 3, 225, 3, 226, 3, 227, 3, 228, 3, 229, 3, 230, 3, 231, 3,
+                                       192, 3, 193, 3, 194, 3, 195, 3, 196, 3, 197, 3, 198, 3, 199, 3,
+                                       160, 3, 161, 3, 162, 3, 163, 3, 164, 7, 165, 7, 166, 7, 167, 7,
+                                       128, 3, 129, 3, 130, 3, 131, 7, 132, 7, 133, 7, 134, 11, 135, 11,
+                                       96, 3, 97, 3, 98, 7, 99, 7, 100, 11, 101, 11, 102, 15, 103, 15,
+                                       64, 3, 65, 3, 66, 7, 67, 7, 68, 11, 69, 15, 70, 15, 71, 19,
+                                       32, 3, 33, 3, 34, 7, 35, 11, 36, 15, 37, 15, 38, 19, 39, 23,
+                                       0, 3, 1, 3, 2, 7, 3, 11, 4, 15, 5, 19, 6, 23, 7, 27];
         
         assert_eq!(test_out.get_ref(), &valid_out)
     }
