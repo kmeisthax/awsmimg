@@ -22,3 +22,13 @@ pub enum DirectFormat {
     AGB16, //16 bits per pixel, packed, RGB5N1, arragned row-major
     NTR16  //16 bits per pixel, packed, RGB5A1, arragned row-major
 }
+
+pub fn interpret_direct_format_name(fmt_given: &str) -> Option<DirectFormat> {
+    let fmt = fmt_given.to_ascii_lowercase();
+    
+    match fmt.as_ref() {
+        "agb16" => Some(DirectFormat::AGB16),
+        "ntr16" => Some(DirectFormat::NTR16),
+        _ => None
+    }
+}

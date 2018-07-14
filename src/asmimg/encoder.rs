@@ -2,8 +2,8 @@ use std::io;
 use std::io::Write;
 use image::{GenericImage, Primitive, Rgba, Pixel};
 
-use asmimg::formats::IndexedFormat;
-use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder};
+use asmimg::formats::{IndexedFormat, DirectFormat};
+use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
 use asmimg::conversion::indexes_from_luma;
 
 /// Represents a struct which can encode color indexes and their palettes into
@@ -100,4 +100,18 @@ pub trait DirectGraphicsEncoder {
     /// images by rounding to the nearest neighbor and not by any other method.
     /// In particular, dithering is not permitted.
     fn encode_colors<I, P, S>(&mut self, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static;
+}
+
+/// Given an image, a writer, and a format description, encode an image using
+/// it's color values to directly determine the color used in the final image.
+/// 
+/// This function allows access to built-in, private type implementations of
+/// these traits. It is currently not possible to access these types through any
+/// other means as they are private and DirectGraphicsEncoder cannot be
+/// dynamically dispatched.
+pub fn encode_image_as_direct_color_with_format<'a, W, I, P, S>(format: DirectFormat, w: &mut W, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, W: Write + 'a {
+    match format {
+        DirectFormat::AGB16 => AGB16Encoder::new_agb(w).encode_colors(image),
+        DirectFormat::NTR16 => AGB16Encoder::new_ntr(w).encode_colors(image)
+    }
 }
