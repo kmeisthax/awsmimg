@@ -1,7 +1,7 @@
 use asmimg::formats::IndexedGraphicsProperties;
 use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
 use asmimg::decoder::IndexedGraphicsDecoder;
-use asmimg::tiles::TileChunkIterator;
+use asmimg::conversion::TileChunkIterator;
 
 use std::io;
 use std::io::{Write, Read, ErrorKind};
