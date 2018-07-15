@@ -8,8 +8,8 @@ use argparse::{ArgumentParser, Store, StoreFalse, StoreTrue};
 use std::fs::{OpenOptions};
 use std::io;
 use std::io::Seek;
-use asmimg::encoder::encode_image_as_indexes_with_format;
-use asmimg::formats::interpret_indexed_format_name;
+use asmimg::encoder::{encode_image_as_indexes_with_format, encode_image_as_direct_color_with_format};
+use asmimg::formats::{interpret_indexed_format_name, interpret_direct_format_name};
 
 fn main() -> io::Result<()> {
     let mut input_filename = "".to_string();
@@ -35,19 +35,23 @@ fn main() -> io::Result<()> {
     
     println!("Converting {} to {}", input_filename, output_filename);
     
-    let img = image::open(input_filename).unwrap();
     let mut bin = OpenOptions::new().write(true).create(true).truncate(truncatemode).open(output_filename)?;
-    let fmt = interpret_indexed_format_name(&format).unwrap();
-    
     let orig_length = bin.seek(io::SeekFrom::End(0))?;
     if offset > orig_length {
         //Seeking beyond the end of a file is implementation defined. Hence, we error out
         return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Proposed offset length exceeds length of file."))
     }
-    
     bin.seek(io::SeekFrom::Start(offset))?;
     
-    {
-        encode_image_as_indexes_with_format(fmt, &mut bin, &img)
+    let img = image::open(input_filename).unwrap();
+    let idxfmt = interpret_indexed_format_name(&format);
+    
+    match idxfmt {
+        Some(fmt) => encode_image_as_indexes_with_format(fmt, &mut bin, &img),
+        None => {
+            let dirfmt = interpret_direct_format_name(&format).unwrap();
+            
+            encode_image_as_direct_color_with_format(dirfmt, &mut bin, &img)
+        }
     }
 }
