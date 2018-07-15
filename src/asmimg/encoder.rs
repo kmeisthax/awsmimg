@@ -21,12 +21,6 @@ pub trait IndexedGraphicsEncoder {
     /// has a tile size, then the width and height must be multiples of the
     /// width and height of a single tile.
     /// 
-    /// Despite being a DecodingResult, the contents of data will always be
-    /// treated as color indicies. If your image is bitmapped graphics, then
-    /// it's colors must be mapped to color indexes before encoding. See
-    /// asmimg::conversion for functions which extract or generate index data
-    /// from a bitmap image.
-    /// 
     /// Indexes beyond the maximum number of colors supported by the format
     /// will be truncated. e.g. a 4bpp indexed color format encoder told to
     /// encode the index 22 must instead truncate that index within the range
