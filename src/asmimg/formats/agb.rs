@@ -190,6 +190,7 @@ mod tests {
     
     use std::io::Cursor;
     use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
+    use asmimg::decoder::IndexedGraphicsDecoder;
     use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
     
     #[test]
@@ -209,6 +210,24 @@ mod tests {
                                      0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE];
         
         assert_eq!(test_out.get_ref(), &valid_out)
+    }
+    
+    #[test]
+    fn data4_decode() {
+        let src : Vec<u8> = vec![0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE,
+                                 0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE,
+                                 0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE,
+                                 0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE];
+        let mut test_in = Cursor::new(&src);
+        let mut agb4 = AGB4Encoder::new(&mut test_in);
+        
+        let test_out : Vec<u8> = agb4.decode_indexes(src.len()).unwrap();
+        let valid_out : Vec<u8> = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+                                       0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+                                       0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,
+                                       0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+        
+        assert_eq!(&test_out, &valid_out)
     }
     
     #[test]
