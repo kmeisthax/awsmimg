@@ -121,28 +121,28 @@ impl<'a, F: 'a> IndexedGraphicsDecoder for AGB4Encoder<'a, F> where F: Read {
 }
 
 /// Encoder for 8bpp tile patterns for the AGB platform.
-pub struct AGB8Encoder<'a, W: Write + 'a> {
-    w: &'a mut W,
+pub struct AGB8Encoder<'a, F: 'a> {
+    f: &'a mut F,
     tsize: u32
 }
 
-impl<'a, W:Write + 'a> AGB8Encoder<'a, W> {
-    pub fn new_tiled(write: &'a mut W) -> AGB8Encoder<'a, W> {
+impl<'a, F: 'a> AGB8Encoder<'a, F> {
+    pub fn new_tiled(file: &'a mut F) -> AGB8Encoder<'a, F> {
         AGB8Encoder {
-            w: write,
+            f: file,
             tsize: 8
         }
     }
     
-    pub fn new_chunky(write: &'a mut W) -> AGB8Encoder<'a, W> { 
+    pub fn new_chunky(file: &'a mut F) -> AGB8Encoder<'a, F> { 
         AGB8Encoder {
-            w: write,
+            f: file,
             tsize: 1
         }
     }
 }
 
-impl<'a, W:Write + 'a> IndexedGraphicsProperties for AGB8Encoder<'a, W> {
+impl<'a, F: 'a> IndexedGraphicsProperties for AGB8Encoder<'a, F> {
     fn tile_size(&self) -> (u32, u32) {
         (self.tsize, self.tsize)
     }
@@ -156,7 +156,7 @@ impl<'a, W:Write + 'a> IndexedGraphicsProperties for AGB8Encoder<'a, W> {
     }
 }
 
-impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
+impl<'a, F: 'a> IndexedGraphicsEncoder for AGB8Encoder<'a, F> where F: Write {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
         let mut out: [u8; 64] = [0; 64];
         let tsize = (self.tsize * self.tsize) as usize;
@@ -166,14 +166,33 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
                 out[i] = byte.to_u8().unwrap() & 0xFF;
             }
             
-            self.w.write(&out[0 .. tsize])?;
+            self.f.write(&out[0 .. tsize])?;
         }
         
         Ok(())
     }
     
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
-        encode_palette(self.w, palette.into_iter(), false)
+        encode_palette(self.f, palette.into_iter(), false)
+    }
+}
+
+impl<'a, F: 'a> IndexedGraphicsDecoder for AGB8Encoder<'a, F> where F: Read {
+    fn decode_indexes<P: Primitive>(&mut self, size: usize) -> io::Result<Vec<P>> {
+        let mut out = Vec::with_capacity(size);
+        let mut buf: [u8; 1] = [0];
+        
+        for i in 0..size {
+            let readcnt = self.f.read(&mut buf)?;
+            
+            if readcnt < 1 {
+                return Err(io::Error::new(ErrorKind::UnexpectedEof, "File is shorter than image being decoded"));
+            }
+            
+            out.push(P::from(buf[0]).unwrap());
+        }
+        
+        Ok(out)
     }
 }
 
@@ -281,6 +300,18 @@ mod tests {
         let valid_out : Vec<u8> = num::range(0, 64).collect();
         
         assert_eq!(test_out.get_ref(), &valid_out)
+    }
+    
+    #[test]
+    fn data8t_decode() {
+        let src : Vec<u8> = num::range(0, 64).collect();
+        let mut test_in = Cursor::new(&src);
+        let mut agb8 = AGB8Encoder::new_tiled(&mut test_in);
+        
+        let test_out : Vec<u8> = agb8.decode_indexes(src.len()).unwrap();
+        let valid_out : Vec<u8> = num::range(0, 64).collect();
+        
+        assert_eq!(&test_out, &valid_out)
     }
     
     #[test]
