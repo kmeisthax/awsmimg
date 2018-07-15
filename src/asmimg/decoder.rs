@@ -1,7 +1,9 @@
 use std::io;
 use image::Primitive;
 
-pub trait IndexedGraphicsDecoder {
+use asmimg::formats::IndexedGraphicsProperties;
+
+pub trait IndexedGraphicsDecoder : IndexedGraphicsProperties {
     /// Decode previously-encoded data into a vector of index data.
     /// 
     /// The given size parameter may be used to limit the amount of image data

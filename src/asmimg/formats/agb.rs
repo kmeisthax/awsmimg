@@ -1,3 +1,4 @@
+use asmimg::formats::IndexedGraphicsProperties;
 use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
 use asmimg::decoder::IndexedGraphicsDecoder;
 use asmimg::tiles::TileChunkIterator;
@@ -66,6 +67,20 @@ impl<'a, F: 'a> AGB4Encoder<'a, F> {
     }
 }
 
+impl<'a, F: 'a> IndexedGraphicsProperties for AGB4Encoder<'a, F> {
+    fn tile_size(&self) -> (u32, u32) {
+        (8, 8)
+    }
+    
+    fn attribute_size(&self) -> (u32, u32) {
+        (8, 8)
+    }
+    
+    fn palette_maxcol(&self) -> u16 {
+        15
+    }
+}
+
 impl<'a, F: 'a> IndexedGraphicsEncoder for AGB4Encoder<'a, F> where F: Write {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
         let mut out: [u8; 1] = [0];
@@ -82,10 +97,6 @@ impl<'a, F: 'a> IndexedGraphicsEncoder for AGB4Encoder<'a, F> where F: Write {
     
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
         encode_palette(self.f, palette.into_iter(), false)
-    }
-    
-    fn palette_maxcol(&self) -> u16 {
-        15
     }
 }
 
@@ -131,6 +142,20 @@ impl<'a, W:Write + 'a> AGB8Encoder<'a, W> {
     }
 }
 
+impl<'a, W:Write + 'a> IndexedGraphicsProperties for AGB8Encoder<'a, W> {
+    fn tile_size(&self) -> (u32, u32) {
+        (self.tsize, self.tsize)
+    }
+    
+    fn attribute_size(&self) -> (u32, u32) {
+        (self.tsize, self.tsize)
+    }
+    
+    fn palette_maxcol(&self) -> u16 {
+        255
+    }
+}
+
 impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
         let mut out: [u8; 64] = [0; 64];
@@ -149,10 +174,6 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB8Encoder<'a, W> {
     
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
         encode_palette(self.w, palette.into_iter(), false)
-    }
-    
-    fn palette_maxcol(&self) -> u16 {
-        255
     }
 }
 

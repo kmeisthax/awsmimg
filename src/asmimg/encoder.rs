@@ -2,7 +2,7 @@ use std::io;
 use std::io::Write;
 use image::{GenericImage, Primitive, Rgba, Pixel};
 
-use asmimg::formats::{IndexedFormat, DirectFormat};
+use asmimg::formats::{IndexedGraphicsProperties, IndexedFormat, DirectFormat};
 use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
 use asmimg::conversion::indexes_from_luma;
 
@@ -12,7 +12,7 @@ use asmimg::conversion::indexes_from_luma;
 /// The format supported by the impl may be tiled, chunky, planar, interleaved,
 /// or even compressed; as long as the format ultimately represents some kind
 /// of color index into a hardware palette.
-pub trait IndexedGraphicsEncoder {
+pub trait IndexedGraphicsEncoder : IndexedGraphicsProperties {
     /// Given a vector of palette indexes, encode them for the particular
     /// graphics format this encoder supports.
     /// 
@@ -36,12 +36,6 @@ pub trait IndexedGraphicsEncoder {
     /// write 22 colors to the palette. Conversely, a palette underflow must
     /// not be padded to the length of a single palette.
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()>;
-    
-    /// Retrieves the maximum number of colors in a palette.
-    /// 
-    /// This is the largest index that the format can represent. It does not
-    /// imply a limit on the size of palette Vec<u8>s passed to encode_palette.
-    fn palette_maxcol(&self) -> u16;
 }
 
 /// Given an image and an encoder, encode index data by interpreting the
