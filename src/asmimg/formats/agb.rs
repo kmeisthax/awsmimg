@@ -1,8 +1,9 @@
 use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
+use asmimg::decoder::IndexedGraphicsDecoder;
 use asmimg::tiles::TileChunkIterator;
 
 use std::io;
-use std::io::Write;
+use std::io::{Write, Read, ErrorKind};
 use image::{GenericImage, Primitive, Rgba, Pixel};
 
 /// Encode a series of RGBA colors as palette data.
@@ -52,27 +53,27 @@ impl<'a, I, P, S> Iterator for ImageRgbaIterator<'a, I, P, S> where I: Iterator<
     }
 }
 
-/// Encoder for 4bpp tile patterns for the AGB platform.
-pub struct AGB4Encoder<'a, W: Write + 'a> {
-    w: &'a mut W,
+/// Encoder/decoder for 4bpp tile patterns for the AGB platform.
+pub struct AGB4Encoder<'a, F: 'a> {
+    f: &'a mut F,
 }
 
-impl<'a, W:Write + 'a> AGB4Encoder<'a, W> {
-    pub fn new(write: &'a mut W) -> AGB4Encoder<'a, W> {
+impl<'a, F: 'a> AGB4Encoder<'a, F> {
+    pub fn new(file: &'a mut F) -> AGB4Encoder<'a, F> {
         AGB4Encoder {
-            w: write
+            f: file
         }
     }
 }
 
-impl<'a, W:Write> IndexedGraphicsEncoder for AGB4Encoder<'a, W> {
+impl<'a, F: 'a> IndexedGraphicsEncoder for AGB4Encoder<'a, F> where F: Write {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
         let mut out: [u8; 1] = [0];
         
         for tile in TileChunkIterator::new(data, 8, 8, width) {
             for byte in tile.chunks(2) {
                 out[0] = byte[0].to_u8().unwrap() & 0x0F | (byte[1].to_u8().unwrap() & 0x0F) << 4;
-                self.w.write(&out)?;
+                self.f.write(&out)?;
             }
         }
         
@@ -80,11 +81,31 @@ impl<'a, W:Write> IndexedGraphicsEncoder for AGB4Encoder<'a, W> {
     }
     
     fn encode_palette<T: Primitive>(&mut self, palette: Vec<Rgba<T>>) -> io::Result<()> {
-        encode_palette(self.w, palette.into_iter(), false)
+        encode_palette(self.f, palette.into_iter(), false)
     }
     
     fn palette_maxcol(&self) -> u16 {
         15
+    }
+}
+
+impl<'a, F: 'a> IndexedGraphicsDecoder for AGB4Encoder<'a, F> where F: Read {
+    fn decode_indexes<P: Primitive>(&mut self, size: usize) -> io::Result<Vec<P>> {
+        let mut out = Vec::with_capacity(size * 2);
+        let mut buf: [u8; 1] = [0];
+        
+        for i in 0..size {
+            let readcnt = self.f.read(&mut buf)?;
+            
+            if readcnt < 1 {
+                return Err(io::Error::new(ErrorKind::UnexpectedEof, "File is shorter than image being decoded"));
+            }
+            
+            out.push(P::from(buf[0] & 0x0F).unwrap());
+            out.push(P::from(buf[0] >> 4).unwrap());
+        }
+        
+        Ok(out)
     }
 }
 
