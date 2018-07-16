@@ -116,8 +116,8 @@ pub fn luma_from_indexes<Pr>(data: Vec<Pr>, maxcol: Pr, tsize: (u32, u32), isize
             ih = h;
         },
         None => {
-            iw = 0;
-            ih = 0;
+            iw = (tcount as f32).sqrt().ceil() as u32 * tw;
+            ih = ((tcount as f32) / (iw / tw) as f32).ceil() as u32;
         }
     };
     
