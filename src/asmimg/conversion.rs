@@ -2,83 +2,59 @@ use image::{GenericImage, Pixel, Primitive, ImageBuffer, LumaA};
 use num::NumCast;
 use std::ops::Div;
 
-/// Convert image data to color indexes using their luminance value.
+/// Given an image, produce a stream of index data to encode by interpreting
+/// the grayscale values of the image as indexes.
 /// 
-/// RGB data will be converted to grayscale. Alpha channels will be discarded.
-/// Once converted to luminance data, each individual value will be mapped to
-/// an integer within the range [0, maxcol) to produce a final integer value.
-pub fn indexes_from_luma<I, P, S>(image: &I, maxcol: S) -> Vec<S>
+/// The given tile size will be used to separate incoming pixels into tiles.
+/// asmimg convention is to display tiles from left-to-right, top-to-bottom
+/// within an image.
+///
+/// RGB data will be converted to grayscale. Once converted to luminance data,
+/// each individual value will be mapped to an integer within the range
+/// [0, maxcol) to produce a final integer value. Alpha values within the image
+/// with a value of zero will be ignored for the purposes of determining the
+/// size of the data to be converted. When preoparing an image whose dimensions
+/// do not divide cleanly into the tile count, you may add "blank" tiles
+/// consisting of transparent pixels to indicate that they should not be
+/// encoded.
+///
+/// Do not place transparent pixels in places where a further non-transparent
+/// pixel would cause the length of the converted data to cover the transparent
+/// pixel. In such cases, the value of that pixel in the encoded data stream is
+/// implementation-defined.
+pub fn indexes_from_luma<I, P, S>(image: &I, maxcol: S, tsize: (u32, u32)) -> Vec<S>
     where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static {
     
     let (width, height) = image.dimensions();
+    let (tw, th) = tsize;
     let mut out : Vec<S> = Vec::with_capacity(width as usize * height as usize);
     let imgmax = S::max_value();
     let imgmax: f32 = NumCast::from(imgmax).unwrap();
     let maxcol_adj: f32 = NumCast::from(maxcol).unwrap();
     
-    for (_, _, pixel) in image.pixels() {
-        let gray = pixel.to_luma()[0].to_f32().unwrap();
-        out.push(S::from(gray / imgmax * maxcol_adj).unwrap());
-    }
+    let tlen = tw * th;
     
+    for (ix, iy, pixel) in image.pixels() {
+        let la = pixel.to_luma_alpha();
+        let gray = la[0].to_f32().unwrap();
+        let alpha = la[1].to_u8().unwrap();
+        
+        let tx = ix / tw;
+        let px = ix % tw;
+        let ty = iy / tw;
+        let py = iy % tw;
+        
+        let itile = ty * (width / tw) + tx;
+        let outidx = (itile * tlen + py * tw + px) as usize;
+        
+        if outidx > out.len() && alpha != 0u8 {
+            out.resize(outidx, S::from(0u8).unwrap());
+        }
+        
+        out[outidx] = S::from(gray / imgmax * maxcol_adj).unwrap();
+    }
+
     out
-}
-
-pub struct TileChunkIterator<T> {
-    src: Vec<T>,
-    /// Width of a single tile chunk.
-    tw: u32,
-    /// Height of a single tile chunk.
-    th: u32,
-    /// Length of a single line of data in src. (Usually image width)
-    stride: u32,
-    /// Horizontal position of the next tile chunk to return.
-    x: u32,
-    /// Vertical position of the next tile chunk to return.
-    y: u32,
-}
-
-impl<T> TileChunkIterator<T> {
-    pub fn new(src: Vec<T>, tw: u32, th: u32, stride: u32) -> TileChunkIterator<T> {
-        TileChunkIterator {
-            src: src, tw: tw, th: th, stride: stride, x: 0, y: 0
-        }
-    }
-}
-
-impl<T> Iterator for TileChunkIterator<T> where T: Clone {
-    type Item = Vec<T>;
-    
-    fn next(&mut self) -> Option<Vec<T>> {
-        let mut x2 = self.x + self.tw;
-        let mut y2 = self.y + self.th;
-        
-        //If the next tile is off the right side of the image, go down a row
-        if x2 > self.stride {
-            self.x = 0;
-            self.y = y2;
-            
-            x2 = self.x + self.tw;
-            y2 = self.y + self.th;
-        }
-        
-        //If the next tile is off the bottom of the image, we're done
-        if (y2 * self.stride) as usize > self.src.len() {
-            return None
-        }
-        
-        let mut v = Vec::with_capacity(self.tw as usize * self.th as usize);
-        
-        for j in self.y..y2 {
-            for i in self.x..x2 {
-                v.push(self.src[(j * self.stride + i) as usize].clone());
-            }
-        }
-        
-        self.x += self.tw;
-        
-        Some(v)
-    }
 }
 
 /// Given a stream of decoded index data, produce an image representing the

@@ -47,7 +47,7 @@ pub trait IndexedGraphicsEncoder : IndexedGraphicsProperties {
 pub fn encode_image_as_indexes<'a, E, I, P, S>(enc: &mut E, image: &I) -> io::Result<()> where I: GenericImage<Pixel=P>, P: Pixel<Subpixel=S> + 'static, S: Primitive + 'static, E: IndexedGraphicsEncoder + 'a {
     let (width, height) = image.dimensions();
     
-    let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap());
+    let gdata = indexes_from_luma(image, S::from(enc.palette_maxcol()).unwrap(), enc.tile_size());
     enc.encode_indexes(gdata, width, height)
 }
 

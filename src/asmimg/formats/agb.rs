@@ -1,7 +1,6 @@
 use asmimg::formats::IndexedGraphicsProperties;
 use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
 use asmimg::decoder::IndexedGraphicsDecoder;
-use asmimg::conversion::TileChunkIterator;
 
 use std::io;
 use std::io::{Write, Read, ErrorKind};
@@ -85,11 +84,9 @@ impl<'a, F: 'a> IndexedGraphicsEncoder for AGB4Encoder<'a, F> where F: Write {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
         let mut out: [u8; 1] = [0];
         
-        for tile in TileChunkIterator::new(data, 8, 8, width) {
-            for byte in tile.chunks(2) {
-                out[0] = byte[0].to_u8().unwrap() & 0x0F | (byte[1].to_u8().unwrap() & 0x0F) << 4;
-                self.f.write(&out)?;
-            }
+        for byte in data.chunks(2) {
+            out[0] = byte[0].to_u8().unwrap() & 0x0F | (byte[1].to_u8().unwrap() & 0x0F) << 4;
+            self.f.write(&out)?;
         }
         
         Ok(())
@@ -158,15 +155,11 @@ impl<'a, F: 'a> IndexedGraphicsProperties for AGB8Encoder<'a, F> {
 
 impl<'a, F: 'a> IndexedGraphicsEncoder for AGB8Encoder<'a, F> where F: Write {
     fn encode_indexes<P: Primitive>(&mut self, data: Vec<P>, width: u32, _height: u32) -> io::Result<()> {
-        let mut out: [u8; 64] = [0; 64];
-        let tsize = (self.tsize * self.tsize) as usize;
+        let mut out: [u8; 1] = [0];
         
-        for tile in TileChunkIterator::new(data, self.tsize, self.tsize, width) {
-            for (i, byte) in tile.into_iter().enumerate() {
-                out[i] = byte.to_u8().unwrap() & 0xFF;
-            }
-            
-            self.f.write(&out[0 .. tsize])?;
+        for byte in data {
+            out[0] = byte.to_u8().unwrap() & 0xFF;
+            self.f.write(&out)?;
         }
         
         Ok(())
