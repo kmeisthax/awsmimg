@@ -47,11 +47,11 @@ pub fn indexes_from_luma<I, P, S>(image: &I, maxcol: S, tsize: (u32, u32)) -> Ve
         let itile = ty * (width / tw) + tx;
         let outidx = (itile * tlen + py * tw + px) as usize;
         
-        if outidx > out.len() && alpha != 0u8 {
-            out.resize(outidx, S::from(0u8).unwrap());
+        if outidx >= out.len() && alpha != 0u8 {
+            out.resize(outidx + 1, S::from(0u8).unwrap());
         }
         
-        out[outidx] = S::from(gray / imgmax * maxcol_adj).unwrap();
+        out[outidx] = S::from((gray / imgmax * maxcol_adj).floor()).unwrap();
     }
 
     out
@@ -113,8 +113,8 @@ pub fn luma_from_indexes<Pr>(data: Vec<Pr>, maxcol: Pr, tsize: (u32, u32), isize
         let px = x % tw; // pixel units
         let py = y % th;
         
-        let tileid = ty * (iw / tw) + tx;
-        let tilepx = px * tw + py;
+        let tileid = (ty * (iw / tw)) + tx;
+        let tilepx = (py * tw) + px;
         let tileidx : usize = NumCast::from(tileid * tstride + tilepx).unwrap();
         
         if tileidx > data.len() {
@@ -126,4 +126,48 @@ pub fn luma_from_indexes<Pr>(data: Vec<Pr>, maxcol: Pr, tsize: (u32, u32), isize
     });
     
     Some(out)
+}
+
+#[cfg(test)]
+mod test {
+    extern crate image;
+    extern crate num;
+    
+    use asmimg::conversion::{indexes_from_luma, luma_from_indexes};
+    use image::{GenericImage, Pixel, ImageBuffer, LumaA};
+    use num::NumCast;
+    
+    #[test]
+    fn conv_roundtrip_test() {
+        //TODO: Test fails if we hand RGBA pixels into the converter instead of
+        //LumaA pixels. Specifically there are conversion failures possibly
+        //caused by the use of integer maths? I'm not sure. All I know is that
+        //in 256 color modes indexes like 111 don't round-trip.
+        let test_input : ImageBuffer<LumaA<u8>, Vec<u8>> = ImageBuffer::from_fn(16, 16, |x, y| {
+            let l : u8 = (y * 16 + x) as u8;
+            
+            LumaA([l,255u8])
+        });
+        
+        let test_mid = indexes_from_luma(&test_input, 255, (8, 8));
+        //let valid_mid : Vec<u8> = num::range(0, 255).collect();
+        
+        assert_eq!(test_mid.len(), 256);
+        //assert_eq!(&test_mid, &valid_mid);
+        
+        let test_output = luma_from_indexes(test_mid, 255, (8, 8), Some((16, 16))).unwrap();
+        
+        let mut grays0 : Vec<u8> = Vec::with_capacity(255);
+        let mut grays1 : Vec<u8> = Vec::with_capacity(255);
+        
+        for pixel in test_input.pixels() {
+            grays0.push(NumCast::from(pixel.to_rgba()[0]).unwrap());
+        }
+        
+        for (_, _, pixel) in test_output.pixels() {
+            grays1.push(NumCast::from(pixel.to_rgba()[0]).unwrap());
+        }
+        
+        assert_eq!(&grays0, &grays1);
+    }
 }
