@@ -74,7 +74,7 @@ pub fn indexes_from_luma<I, P, S>(image: &I, maxcol: S, tsize: (u32, u32)) -> Ve
 /// image not holding decoded index data will instead be fully transparent
 /// pixels. As a result, the pixel format of returned images will be locked to
 /// LumaA pixels.
-pub fn luma_from_indexes<Pr>(data: Vec<Pr>, maxcol: Pr, tsize: (u32, u32), isize: Option<(u32, u32)>) -> Option<impl GenericImage> where Pr: Primitive, u8: Div<Pr> {
+pub fn luma_from_indexes<'a, S>(data: Vec<S>, maxcol: u16, tsize: (u32, u32), isize: Option<(u32, u32)>) -> Option<Box<ImageBuffer<LumaA<u8>, Vec<u8>>>> where S: Primitive + 'a {
     let mut iw;
     let mut ih;
     let (tw, th) = tsize;
@@ -106,7 +106,7 @@ pub fn luma_from_indexes<Pr>(data: Vec<Pr>, maxcol: Pr, tsize: (u32, u32), isize
     let colscale : f32 = 255f32 / maxcol;
     
     //TODO: What if we have a format that needs more than 8 bits of precision?
-    let mut out : ImageBuffer<LumaA<u8>, Vec<u8>> = ImageBuffer::from_fn(iw, ih, |x, y| {
+    Some(Box::new(ImageBuffer::from_fn(iw, ih, |x, y| {
         let tx = x / tw; // tile units
         let ty = y / th;
         
@@ -123,9 +123,7 @@ pub fn luma_from_indexes<Pr>(data: Vec<Pr>, maxcol: Pr, tsize: (u32, u32), isize
             let tileval : f32 = NumCast::from(data[tileidx]).unwrap();
             LumaA([NumCast::from(tileval * colscale).unwrap(), 255u8])
         }
-    });
-    
-    Some(out)
+    })))
 }
 
 #[cfg(test)]

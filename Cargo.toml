@@ -15,4 +15,8 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "asmimg"
-path = "src/main.rs"
+path = "src/encode.rs"
+
+[[bin]]
+name = "asmrip"
+path = "src/decode.rs"
