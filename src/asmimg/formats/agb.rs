@@ -99,7 +99,7 @@ impl<'a, F: 'a> IndexedGraphicsEncoder for AGB4Encoder<'a, F> where F: Write {
 
 impl<'a, F: 'a> IndexedGraphicsDecoder for AGB4Encoder<'a, F> where F: Read {
     fn decode_indexes<P: Primitive>(&mut self, size: usize) -> io::Result<Vec<P>> {
-        let mut out = Vec::with_capacity(size * 2);
+        let mut out = Vec::new();
         let mut buf: [u8; 1] = [0];
         
         for i in 0..size {
