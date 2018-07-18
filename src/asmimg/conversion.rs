@@ -117,7 +117,7 @@ pub fn luma_from_indexes<'a, S>(data: Vec<S>, maxcol: u16, tsize: (u32, u32), is
         let tilepx = (py * tw) + px;
         let tileidx : usize = NumCast::from(tileid * tstride + tilepx).unwrap();
         
-        if tileidx > data.len() {
+        if tileidx >= data.len() {
             LumaA([0u8, 0u8])
         } else {
             let tileval : f32 = NumCast::from(data[tileidx]).unwrap();
