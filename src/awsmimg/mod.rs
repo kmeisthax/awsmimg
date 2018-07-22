@@ -3,3 +3,4 @@ pub mod encoder;
 pub mod decoder;
 pub mod tiles;
 pub mod formats;
+pub mod compression;
