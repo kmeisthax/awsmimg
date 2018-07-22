@@ -6,7 +6,7 @@ use std::ops::Div;
 /// the grayscale values of the image as indexes.
 /// 
 /// The given tile size will be used to separate incoming pixels into tiles.
-/// asmimg convention is to display tiles from left-to-right, top-to-bottom
+/// awsmimg convention is to display tiles from left-to-right, top-to-bottom
 /// within an image.
 ///
 /// RGB data will be converted to grayscale. Once converted to luminance data,
@@ -131,7 +131,7 @@ mod test {
     extern crate image;
     extern crate num;
     
-    use asmimg::conversion::{indexes_from_luma, luma_from_indexes};
+    use awsmimg::conversion::{indexes_from_luma, luma_from_indexes};
     use image::{GenericImage, Pixel, ImageBuffer, LumaA};
     use num::NumCast;
     

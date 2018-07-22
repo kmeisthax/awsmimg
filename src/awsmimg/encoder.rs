@@ -2,9 +2,9 @@ use std::io;
 use std::io::Write;
 use image::{GenericImage, Primitive, Rgba, Pixel};
 
-use asmimg::formats::{IndexedGraphicsProperties, IndexedFormat, DirectFormat};
-use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
-use asmimg::conversion::indexes_from_luma;
+use awsmimg::formats::{IndexedGraphicsProperties, IndexedFormat, DirectFormat};
+use awsmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
+use awsmimg::conversion::indexes_from_luma;
 
 /// Represents a struct which can encode color indexes and their palettes into
 /// a particular indexed image format.

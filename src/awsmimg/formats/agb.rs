@@ -1,6 +1,6 @@
-use asmimg::formats::IndexedGraphicsProperties;
-use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
-use asmimg::decoder::IndexedGraphicsDecoder;
+use awsmimg::formats::IndexedGraphicsProperties;
+use awsmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
+use awsmimg::decoder::IndexedGraphicsDecoder;
 
 use std::io;
 use std::io::{Write, Read, ErrorKind};
@@ -222,9 +222,9 @@ mod tests {
     extern crate image;
     
     use std::io::Cursor;
-    use asmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
-    use asmimg::decoder::IndexedGraphicsDecoder;
-    use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
+    use awsmimg::encoder::{IndexedGraphicsEncoder, DirectGraphicsEncoder};
+    use awsmimg::decoder::IndexedGraphicsDecoder;
+    use awsmimg::formats::agb::{AGB4Encoder, AGB8Encoder, AGB16Encoder};
     
     #[test]
     fn data4_encode() {

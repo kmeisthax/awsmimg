@@ -4,9 +4,9 @@ use std::io;
 use std::io::Read;
 use image::{GenericImage, ImageBuffer, Primitive, Pixel, LumaA};
 
-use asmimg::formats::{IndexedGraphicsProperties, IndexedFormat};
-use asmimg::formats::agb::{AGB4Encoder, AGB8Encoder};
-use asmimg::conversion::luma_from_indexes;
+use awsmimg::formats::{IndexedGraphicsProperties, IndexedFormat};
+use awsmimg::formats::agb::{AGB4Encoder, AGB8Encoder};
+use awsmimg::conversion::luma_from_indexes;
 
 pub trait IndexedGraphicsDecoder : IndexedGraphicsProperties {
     /// Decode previously-encoded data into a vector of index data.

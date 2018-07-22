@@ -2,14 +2,14 @@ extern crate argparse;
 extern crate image;
 extern crate num;
 
-mod asmimg;
+mod awsmimg;
 
 use argparse::{ArgumentParser, Store, StoreFalse, StoreTrue};
 use std::fs::{OpenOptions};
 use std::io;
 use std::io::Seek;
-use asmimg::encoder::{encode_image_as_indexes_with_format, encode_image_as_direct_color_with_format};
-use asmimg::formats::{interpret_indexed_format_name, interpret_direct_format_name};
+use awsmimg::encoder::{encode_image_as_indexes_with_format, encode_image_as_direct_color_with_format};
+use awsmimg::formats::{interpret_indexed_format_name, interpret_direct_format_name};
 
 fn main() -> io::Result<()> {
     let mut input_filename = "".to_string();

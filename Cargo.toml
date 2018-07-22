@@ -1,5 +1,5 @@
 [package]
-name = "asmimg"
+name = "awsmimg"
 version = "0.1.0"
 authors = ["David Wendt"]
 
@@ -10,13 +10,13 @@ png = "*"
 argparse = "*"
 
 [lib]
-name = "asmimg"
+name = "awsmimg"
 path = "src/lib.rs"
 
 [[bin]]
-name = "asmimg"
+name = "awsmimg"
 path = "src/encode.rs"
 
 [[bin]]
-name = "asmrip"
+name = "awsmrip"
 path = "src/decode.rs"
