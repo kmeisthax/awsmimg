@@ -2,7 +2,7 @@ use std::io;
 use std::io::Read;
 use std::cmp::min;
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 enum AGBHuffmanNode {
     Branch(u8),    //Index of next tree node to read a bit from.
     Leaf(u8)       //End of the Huffman tree - output this compressed symbol.
@@ -198,22 +198,30 @@ impl <'a, R: Read + 'a> Read for AGBHuffmanDecompressor<'a, R> {
         let decomp_bytes_this_round = min(buf.len(), self.internal_size as usize - self.decompressed_cnt);
         
         for i in 0..decomp_bytes_this_round {
+            buf[i] = 0;
+
             let mut current_huffman_node = self.tree.get(0).unwrap().clone();
+            let symbols_per_byte = 8 / self.bits_per_symbol;
             
-            loop {
-                let nextbit = self.get_next_bit()?;
-                let node = match nextbit {
-                    0 => current_huffman_node.0,
-                    _ => current_huffman_node.1
-                };
+            for j in 0..symbols_per_byte {
+                let shift = j * self.bits_per_symbol;
+                let mask : u8 = 0xFF << 8 - shift;
                 
-                match node {
-                    AGBHuffmanNode::Branch(j) => {
-                        current_huffman_node = self.tree.get(j as usize).unwrap().clone();
-                    },
-                    AGBHuffmanNode::Leaf(d) => {
-                        buf[i] = d;
-                        break;
+                loop {
+                    let nextbit = self.get_next_bit()?;
+                    let node = match nextbit {
+                        0 => current_huffman_node.0,
+                        _ => current_huffman_node.1
+                    };
+
+                    match node {
+                        AGBHuffmanNode::Branch(k) => {
+                            current_huffman_node = self.tree.get(k as usize).unwrap().clone();
+                        },
+                        AGBHuffmanNode::Leaf(d) => {
+                            buf[i] = buf[i] | (d & mask) << shift;
+                            break;
+                        }
                     }
                 }
             }
