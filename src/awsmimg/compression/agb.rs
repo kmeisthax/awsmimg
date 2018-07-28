@@ -1,10 +1,11 @@
 use std::io;
-use std::io::Read;
-use std::cmp::min;
+use std::io::{Read, Write};
+use std::cmp::{Ord, Ordering, min};
+use std::collections::binary_heap::BinaryHeap;
 
 #[derive(Copy, Clone)]
 enum AGBHuffmanNode {
-    Branch(u8),    //Index of next tree node to read a bit from.
+    Branch(usize), //Index of next tree node to read a bit from.
     Leaf(u8)       //End of the Huffman tree - output this compressed symbol.
 }
 
@@ -67,9 +68,9 @@ impl <'a, R: Read + 'a> AGBHuffmanDecompressor<'a, R> {
         }
         
         //AGB is little endian so I THINK this works!?
-        self.bits_per_symbol = hdr[3] & 0x0Fu8;
-        self.header_type = hdr[3] >> 4;
-        self.internal_size = ((hdr[2] as u32) << 16) | ((hdr[1] as u32) << 8) | (hdr[0] as u32);
+        self.bits_per_symbol = hdr[0] & 0x0Fu8;
+        self.header_type = hdr[0] >> 4;
+        self.internal_size = ((hdr[3] as u32) << 16) | ((hdr[2] as u32) << 8) | (hdr[1] as u32);
         
         if self.header_type != 2 {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "This is not AGB Huffman data."))
@@ -114,7 +115,7 @@ impl <'a, R: Read + 'a> AGBHuffmanDecompressor<'a, R> {
                 lnode = AGBHuffmanNode::Leaf(rawnode[0]);
             },
             false => {
-                lnode = AGBHuffmanNode::Branch((offset / 2) as u8 + ((rawnode[0] & 0x3F) + 1));
+                lnode = AGBHuffmanNode::Branch((offset / 2) + ((rawnode[0] & 0x3F) + 1) as usize);
                 self.read_huffman_tree_internal(rawtree, (offset & 0xFE) + ((rawnode[0] & 0x3F) * 2) as usize + 2, rawnode[0] & 0x80 == 0x80, rawnode[0] & 0x40 == 0x40)?;
             }
         }
@@ -124,7 +125,7 @@ impl <'a, R: Read + 'a> AGBHuffmanDecompressor<'a, R> {
                 rnode = AGBHuffmanNode::Leaf(rawnode[1]);
             },
             false => {
-                rnode = AGBHuffmanNode::Branch((offset / 2) as u8 + ((rawnode[1] & 0x3F) + 1));
+                rnode = AGBHuffmanNode::Branch((offset / 2) + ((rawnode[1] & 0x3F) + 1) as usize);
                 self.read_huffman_tree_internal(rawtree, (offset & 0xFE) + ((rawnode[1] & 0x3F) * 2) as usize + 2, rawnode[1] & 0x80 == 0x80, rawnode[1] & 0x40 == 0x40)?;
             }
         }
@@ -228,5 +229,223 @@ impl <'a, R: Read + 'a> Read for AGBHuffmanDecompressor<'a, R> {
         }
         
         Ok(decomp_bytes_this_round)
+    }
+}
+
+/// Type alias for a weight referencing a node ID in a memory arena.
+///
+/// To be used with a binary heap
+#[derive(Eq, PartialEq)]
+struct AGBHuffmanNodeWeight {
+    freq: u32,
+    pos: Option<usize>,
+    symbol: Option<u8>
+}
+
+impl PartialOrd for AGBHuffmanNodeWeight {
+    /// Inverted order to force binary heap to be a min heap
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for AGBHuffmanNodeWeight {
+    /// Inverted order to force binary heap to be a min heap
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.freq.cmp(&self.freq)
+    }
+}
+
+/// Implementation of an AGBHuffman compressor as a Write filter.
+///
+/// Usage considerations: AGBHuffmanCompressor does not write data to the sink
+/// until it is flushed. Flushing the compressor constitutes compressing and
+/// writing all compressed data plus the header to the underlying file. This is
+/// an additional semantic burden on Write.flush but was considered preferrable
+/// to compressing on Drop.
+struct AGBHuffmanCompressor<'a, W: Write + 'a> {
+    // DATA SINK
+    w: &'a mut W,
+
+    // COMPRESSION PARAMETERS
+    bits_per_symbol: u8,
+
+    // INTERNAL COMPRESSION STATE
+    data: Vec<u8>,
+    tree: Vec<AGBHuffmanTree>,
+    frequency: Vec<u32>,
+}
+
+impl<'a, W: Write + 'a> AGBHuffmanCompressor<'a, W> {
+    pub fn new(w: &'a mut W, bits_per_symbol: u8) -> AGBHuffmanCompressor<'a, W> {
+        let max_symbols = 2_usize.pow(bits_per_symbol.into());
+
+        AGBHuffmanCompressor {
+            w: w,
+            bits_per_symbol: bits_per_symbol,
+            data: Vec::new(),
+            tree: Vec::with_capacity(max_symbols),
+            frequency: Vec::with_capacity(max_symbols),
+        }
+    }
+
+    fn serialize_huffman_tree(&self, tree: &AGBHuffmanTree) -> Vec<u8> {
+        let mut treenode = vec![0u8; 2];
+
+        //TODO: How do we allocate space to write child nodes in?
+
+        match tree.0 {
+            AGBHuffmanNode::Branch(i) => {
+                let child0bit = match self.tree[i].0 {
+                    AGBHuffmanNode::Branch(j) => 0x80,
+                    AGBHuffmanNode::Leaf(j) => 0x00,
+                };
+                let child1bit = match self.tree[i].1 {
+                    AGBHuffmanNode::Branch(j) => 0x40,
+                    AGBHuffmanNode::Leaf(j) => 0x00,
+                };
+
+                treenode[0] = 0u8 | child0bit | child1bit;
+                treenode.extend(self.serialize_huffman_tree(&self.tree[i]));
+            },
+            AGBHuffmanNode::Leaf(i) => {
+                treenode[0] = i;
+            }
+        };
+
+        match tree.1 {
+            AGBHuffmanNode::Branch(i) => {
+                let child0bit = match self.tree[i].0 {
+                    AGBHuffmanNode::Branch(j) => 0x80,
+                    AGBHuffmanNode::Leaf(j) => 0x00,
+                };
+                let child1bit = match self.tree[i].1 {
+                    AGBHuffmanNode::Branch(j) => 0x40,
+                    AGBHuffmanNode::Leaf(j) => 0x00,
+                };
+                let childpos = treenode.len() / 2 - 1;
+
+                treenode[1] = (childpos & 0x3F) as u8 | child0bit | child1bit;
+                treenode.extend(self.serialize_huffman_tree(&self.tree[i]));
+            },
+            AGBHuffmanNode::Leaf(i) => {
+                treenode[1] = i;
+            }
+        };
+
+        treenode
+    }
+
+    fn write_huffman_header(&mut self, rootnode: usize) -> io::Result<()> {
+        let mut hdr = [0u8; 5];
+
+        hdr[0] = ((self.bits_per_symbol & 0x0F) | 0x20) as u8;
+        hdr[1] = (self.data.len() & 0xFF) as u8;
+        hdr[2] = ((self.data.len() >> 8) & 0xFF) as u8;
+        hdr[3] = ((self.data.len() >> 16) & 0xFF) as u8;
+
+        //Huffman data
+        let hdata = self.serialize_huffman_tree(&self.tree[rootnode]);
+
+        //Huffman header
+        hdr[4] = (hdata.len() / 2 - 1) as u8;
+
+        let written = self.w.write(&hdr)?;
+        if written < 5 {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Couldn't write complete AGB compressed graphics header"))
+        }
+
+        let written2 = self.w.write(&hdata)?;
+        if written2 < hdata.len() {
+            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Couldn't write complete AGB huffman tree"))
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a, W: Write + 'a> Write for AGBHuffmanCompressor<'a, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.data.extend_from_slice(buf);
+
+        for byte in buf {
+            let symbols_per_byte = 8 / self.bits_per_symbol;
+            for i in 0..symbols_per_byte {
+                let shift = i * self.bits_per_symbol;
+                let mask : u8 = 0xFF << 8 - shift;
+                let symbol = ((byte & mask) >> shift) as usize;
+
+                if (self.frequency.len() < symbol) {
+                    self.frequency.resize(symbol, 0);
+                }
+
+                self.frequency[symbol] += 1;
+            }
+        }
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        // Construct a huffman tree and compressed datastream.
+        let mut heap = BinaryHeap::new();
+
+        for (i, frequency) in self.frequency.iter().enumerate() {
+            if *frequency == 0 {
+                continue;
+            }
+
+            heap.push(AGBHuffmanNodeWeight{freq: *frequency, pos: None, symbol: Some(i as u8)});
+        }
+
+        //By the way this heap works, the last node processed is the root node.
+        let mut lastnode = 0;
+
+        while let Some(AGBHuffmanNodeWeight{freq: freq1, pos: pos1, symbol: sym1}) = heap.pop() {
+            match heap.pop() {
+                Some(AGBHuffmanNodeWeight{freq: freq2, pos: pos2, symbol: sym2}) => {
+                    //There are two weights remaining in the queue - join the
+                    //lesser node to the greater one.
+
+                    let leftbranch = match pos1 {
+                        Some(p) => {
+                            AGBHuffmanNode::Branch(p)
+                        },
+                        None => {
+                            AGBHuffmanNode::Leaf(sym1.unwrap())
+                        }
+                    };
+
+                    let rightbranch = match pos2 {
+                        Some(p) => {
+                            AGBHuffmanNode::Branch(p)
+                        },
+                        None => {
+                            AGBHuffmanNode::Leaf(sym2.unwrap())
+                        }
+                    };
+
+                    let newpos = self.tree.len();
+                    self.tree.push((leftbranch, rightbranch));
+                    heap.push(AGBHuffmanNodeWeight{freq: freq1+freq2, pos: Some(newpos), symbol: None});
+                    lastnode = newpos;
+                },
+                None => {
+                    break;
+                }
+            }
+        }
+
+        // At this point self.tree is populated with an ostensibly completed
+        // Huffman tree, and we now need to write it out in the order the AGB
+        // BIOS expects.
+
+
+
+        // Now we need to actually use our tree to encode the data!
+
+        // Flush the underlying file.
+        self.w.flush()?;
+        Ok(())
     }
 }
